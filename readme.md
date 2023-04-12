@@ -12,6 +12,7 @@ Before starting the training, please adjust the paths to your local copy of the 
 
 
 # Land-cover Classification
+The `finetune.py` script can be used to finetune a pre-trained model or to train a model from scratch for classifcation of EnMAP or Houston2018 data. Prior to training, tge dataset paths must be specified in `config.yaml`. Hyperparameters are defined at the top of the training script.
 
 # Data
 * The Houston2018 dataset is publicly [available](https://hyperspectral.ee.uh.edu/?page_id=1075) from the Hyperspectral Image Analysis Lab at the University of Houston and IEEE GRSS IADF.
@@ -21,7 +22,6 @@ Before starting the training, please adjust the paths to your local copy of the 
 we provide the pre-trained model checkpoints for the spatial-spectral transformer on Houston2018 and EnMAP datasets.
 * [SST Houston2018]()
 * [SST EnMAP]()
-
 
 # Code
 This repository was developed using `python 3.8.13` with `pytorch 1.12`.
