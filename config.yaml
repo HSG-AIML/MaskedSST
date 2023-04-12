@@ -1,0 +1,28 @@
+data:
+  enmap:
+    train_path: /raid/lscheibenreif/enmap_worldcover_dataset/train
+    n_bands: 200
+    remove_bands: [200,201]
+    n_classes: 8
+  dfc:
+    train_path: /ds2/remote_sensing/enmap_dfc_dataset/MexicoCity/train
+    n_bands: 200
+    remove_bands: [200,201]
+    n_classes: 8
+  houston2018:
+    train_path: /netscratch/lscheibenreif/code/hyper/2018IEEEGRSS_DataFusionChallenge/ImageryAndTrainingGT/2018IEEE_Contest/Phase2/FullHSIDataset
+    train_label_path: /netscratch/lscheibenreif/code/hyper/2018IEEEGRSS_DataFusionChallenge/ImageryAndTrainingGT/2018IEEE_Contest/Phase2/TrainingGT/2018_IEEE_GRSS_DFC_GT_TR.tif
+    n_bands: 48
+    remove_bands: []
+    n_classes: 20
+transformer:
+  transformer_dim: 96 #512,
+  transformer_depth: 4 #8,
+  transformer_n_heads: 8 #8,
+  transformer_mlp_dim: 64 #256,
+  transformer_dropout: 0.1
+  transformer_emb_dropout: 0.1
+masked_modeling:
+  mim_masking_ratio: 0.70
+  mim_intermediate_losses: False
+  mim_mask_patch_size: 4
