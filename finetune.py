@@ -21,11 +21,11 @@ from vit_original import ViTRGB
 from vit_spatial_spectral import ViTSpatialSpectral, get_pos_for_spectral_embedding
 from DeepHyperX.models import get_model
 
-from data_enmap import wavelengths as enmaps_waves
-from data_enmap import invalid_l2_bands
-from data_houston2018 import wavelengths as houston_waves
-from utils import get_supervised_data, load_checkpoint
-from finetune_sweep import validate
+from src.data_enmap import wavelengths as enmaps_waves
+from src.data_enmap import invalid_l2_bands
+from src.data_houston2018 import wavelengths as houston_waves
+from src.utils import get_supervised_data, load_checkpoint
+from src.finetune_sweep import validate
 
 SEED = 5
 

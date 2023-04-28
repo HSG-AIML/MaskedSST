@@ -7,7 +7,7 @@ from einops.layers.torch import Rearrange
 from functools import reduce
 from operator import mul
 
-from pos_embed import get_1d_sincos_pos_embed_from_grid, get_2d_sincos_pos_embed
+from src.pos_embed import get_1d_sincos_pos_embed_from_grid, get_2d_sincos_pos_embed
 
 # helpers
 

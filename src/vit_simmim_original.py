@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 from einops import repeat, rearrange
 import numpy as np
-from vit_spatial_spectral import ViTSpatialSpectral_V1, ViTSpatialSpectral
+from src.vit_spatial_spectral import ViTSpatialSpectral_V1, ViTSpatialSpectral
 
 class BlockwiseToPixels(nn.Module):
     def __init__(self, dim, num_spectral_blocks, pixels_per_patch, precision):

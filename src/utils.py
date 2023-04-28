@@ -11,9 +11,9 @@ import yaml
 import torch
 import torchvision
 
-from vit_spatial_spectral import ViTSpatialSpectral
-from data_enmap import EnMAPWorldCoverDataset, StandardizeEnMAP, ToTensor, WorldCoverLabelTransform, DFCLabelTransform
-from data_houston2018 import Houston2018Dataset, StandardizeHouston2018, Houston2018LabelTransform
+from src.vit_spatial_spectral import ViTSpatialSpectral
+from src.data_enmap import EnMAPWorldCoverDataset, StandardizeEnMAP, ToTensor, WorldCoverLabelTransform, DFCLabelTransform
+from src.data_houston2018 import Houston2018Dataset, StandardizeHouston2018, Houston2018LabelTransform
 
 def get_optimizers(model, config):
     if config.optimizer == "Adam":

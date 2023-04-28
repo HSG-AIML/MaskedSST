@@ -15,9 +15,9 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from vit_spatial_spectral import ViTSpatialSpectral
-from vit_simmim_original import SimMIMSpatialSpectral
-from utils import get_pretrain_config, get_optimizers, get_unsupervised_data
+from src.vit_spatial_spectral import ViTSpatialSpectral
+from src.vit_simmim_original import SimMIMSpatialSpectral
+from src.utils import get_pretrain_config, get_optimizers, get_unsupervised_data
 
 SEED = 5
 random.seed(SEED)
@@ -28,7 +28,7 @@ torch.backends.cudnn.deterministic = True
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 if __name__ == "__main__":
-    config = get_pretrain_config("pretrain_config.yaml", "config.yaml", SEED, device)
+    config = get_pretrain_config("configs/pretrain_config.yaml", "configs/config.yaml", SEED, device)
 
     # create encoder 
     assert config.encoder_name == "ViTSpatialSpectral", f"encoder {config.encoder_name} not available"

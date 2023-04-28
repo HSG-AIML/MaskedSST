@@ -3,7 +3,7 @@ from torch import nn
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-from vit_spatial_spectral import MoveAxis
+from src.vit_spatial_spectral import MoveAxis
 
 # helpers
 
