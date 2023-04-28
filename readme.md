@@ -4,7 +4,9 @@ This projects tailors vision transformers to the characteristics of hyperspectra
 
 Results will be presented at the CVPR EarthVision Workshop 2023 (see below for the reference).
 
-![Masked pre-training for spatial-spectral transformer on hyperspectral imagery](figure1_v3.jpg)
+<p align="center">
+  <img width="536" height="295" src="./figure1_v3.jpg">
+</p>
 
 # Masked pre-training
 The masked pre-training can be started with a call to the `pretrain.py` file.
@@ -16,10 +18,10 @@ The `finetune.py` script can be used to finetune a pre-trained model or to train
 
 # Data
 * The Houston2018 dataset is publicly [available](https://hyperspectral.ee.uh.edu/?page_id=1075) from the Hyperspectral Image Analysis Lab at the University of Houston and IEEE GRSS IADF.
-* Code to re-create the unlabeled EnMAP and labeled EnMAP-DFC datasets is made available in the [code](enmap_data/) directory. Please follow the instructions there.
+* Code to re-create the unlabeled EnMAP and labeled EnMAP-DFC datasets is made available in the [enmap_data](enmap_data/) directory. Please follow the instructions there.
 
 # Pre-trained models
-we provide the pre-trained model checkpoints for the spatial-spectral transformer on Houston2018 and EnMAP datasets.
+We provide the pre-trained model checkpoints for the spatial-spectral transformer on Houston2018 and EnMAP datasets.
 * [SST Houston2018]()
 * [SST EnMAP]()
 
