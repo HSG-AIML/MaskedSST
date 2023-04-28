@@ -5,7 +5,7 @@ This projects tailors vision transformers to the characteristics of hyperspectra
 Results will be presented at the CVPR EarthVision Workshop 2023 (see below for the reference).
 
 <p align="center">
-  <img width="536" height="295" src="./figure1_v3.jpg">
+  <img width="536" height="295" src="./figure1.jpg">
 </p>
 
 # Masked pre-training
