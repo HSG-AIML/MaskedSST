@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 from vit_spatial_spectral import ViTSpatialSpectral
 from vit_simmim_original import SimMIMSpatialSpectral
-from utilities import get_optimizers, get_unsupervised_data
+from utils import get_optimizers, get_unsupervised_data
 
 SEED = 5
 random.seed(SEED)
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     print(f"Model parameters: {model_params:,}")
     hyperparams["num_params"] = model_params
 
-    dataloader, val_dataloader = get_unsupervised_data(hyperparams, device, hyperparams["seed"])
+    dataloader, val_dataloader = get_unsupervised_data(hyperparams, device)
 
     run = wandb.init(project="enmap-mim-spatial-spectral", config=hyperparams, save_code=True)
     run_id = run.id
