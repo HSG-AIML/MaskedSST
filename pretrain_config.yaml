@@ -1,0 +1,29 @@
+dataset: enmap
+image_size: 8
+batch_size: 64
+patch_size: 1
+band_patch_size: 10
+train_fraction: 0.9
+data_fraction: 1
+
+optimizer: AdamW
+scheduler: ReduceLROnPlateau
+epoch: 800
+lr: 0.008 
+weight_decay: 0.05
+clip_grad_norm: True
+
+clip_min: -200
+clip_max: 10000
+rgb_only: False
+spectral_only: False
+
+skip_val: False
+logging_freq: 10
+model_save_freq: 1
+
+encoder_name: ViTSpatialSpectral
+spectral_pos_embed: False
+blockwise_patch_embed: True
+to_pixels_per_spectral_block: True
+tube_masking: True

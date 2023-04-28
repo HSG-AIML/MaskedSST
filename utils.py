@@ -7,6 +7,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "4"  # export VECLIB_MAXIMUM_THREADS=4
 os.environ["NUMEXPR_NUM_THREADS"] = "4"  # export NUMEXPR_NUM_THREADS=6
 os.environ["GDAL_NUM_THREADS"] = "4"
 
+import yaml
 import torch
 import torchvision
 
@@ -14,17 +15,17 @@ from vit_spatial_spectral import ViTSpatialSpectral
 from data_enmap import EnMAPWorldCoverDataset, StandardizeEnMAP, ToTensor, WorldCoverLabelTransform, DFCLabelTransform
 from data_houston2018 import Houston2018Dataset, StandardizeHouston2018, Houston2018LabelTransform
 
-def get_optimizers(model, hyperparams):
-    if hyperparams["optimizer"] == "Adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams["lr"], weight_decay=hyperparams["weight_decay"])
-    elif hyperparams["optimizer"] == "AdamW":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=hyperparams["lr"], weight_decay=hyperparams["weight_decay"])
+def get_optimizers(model, config):
+    if config.optimizer == "Adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+    elif config.optimizer == "AdamW":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 
-    if hyperparams["scheduler"] == "ReduceLROnPlateau":
+    if config.scheduler == "ReduceLROnPlateau":
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.9, patience=5, verbose=True
         )
-    elif hyperparams["scheduler"] == "cosine":
+    elif config.scheduler == "cosine":
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=50, eta_min=0, last_epoch=-1, verbose=False,
         )
@@ -32,17 +33,17 @@ def get_optimizers(model, hyperparams):
     return optimizer, scheduler
 
 
-def get_unsupervised_data(hyperparams, device):
+def get_unsupervised_data(config, device):
 
-    train_path = hyperparams["train_path"]
-    if hyperparams["dataset"] == "enmap":
+    train_path = config.train_path
+    if config.dataset == "enmap":
         label_transform = WorldCoverLabelTransform()
         standardizer = StandardizeEnMAP()
-    elif hyperparams["dataset"] == "dfc":
+    elif config.dataset == "dfc":
         label_transform = DFCLabelTransform()
         standardizer = StandardizeEnMAP()
-    elif hyperparams["dataset"] == "houston2018":
-        train_label_path = hyperparams["train_label_path"]
+    elif config.dataset == "houston2018":
+        train_label_path = config.train_label_path
         standardizer = StandardizeHouston2018()
         label_transform = Houston2018LabelTransform()
 
@@ -51,47 +52,34 @@ def get_unsupervised_data(hyperparams, device):
             ToTensor(),
     ])
 
-    if hyperparams["dataset"] in ["dfc", "enmap"]:
-        dataset = EnMAPWorldCoverDataset(train_path, transforms, label_transform, device, test=False, target_type="unlabeled", remove_bands=hyperparams["remove_bands"], rgb_only=hyperparams["rgb_only"])
-    elif hyperparams["dataset"] == "houston2018":
-        dataset = Houston2018Dataset(train_path, train_label_path, transforms, label_transform, patch_size=hyperparams["image_size"], test=False, drop_unlabeled=False, fix_train_patches=False)
+    if config.dataset in ["dfc", "enmap"]:
+        dataset = EnMAPWorldCoverDataset(train_path, transforms, label_transform, device, test=False, target_type="unlabeled", remove_bands=config.remove_bands, rgb_only=config.rgb_only)
+    elif config.dataset == "houston2018":
+        dataset = Houston2018Dataset(train_path, train_label_path, transforms, label_transform, patch_size=config.image_size, test=False, drop_unlabeled=False, fix_train_patches=False)
 
-    train_fraction = 0.9
-    data_fraction = 1 # share of the train set that is actually used, does not affect val set size
-    hyperparams.update({
-        "train_fraction": train_fraction,
-        "data_fraction": data_fraction,
-    })
-
-    num_train_samples = int(len(dataset) * train_fraction)
+    num_train_samples = int(len(dataset) * config.train_fraction)
     num_val_samples = len(dataset) - num_train_samples
-    num_train_samples = int(num_train_samples * data_fraction)
+    num_train_samples = int(num_train_samples * config.data_fraction)
 
-    print(f"{train_path=}")
-    print(f"{train_fraction=}, {data_fraction=}")
-    print(f"{num_train_samples=}, {num_val_samples=}, {len(dataset)=}")
+    val_dataset, train_dataset, _ = torch.utils.data.random_split(dataset, [num_val_samples, num_train_samples, len(dataset) - num_train_samples - num_val_samples], generator=torch.Generator().manual_seed(config.seed))
 
-    val_dataset, train_dataset, rest = torch.utils.data.random_split(dataset, [num_val_samples, num_train_samples, len(dataset) - num_train_samples - num_val_samples], generator=torch.Generator().manual_seed(hyperparams["seed"]))
-    print(f"{len(train_dataset)=}")
-    print(f"{len(val_dataset)=}")
-
-    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=hyperparams["batch_size"], drop_last=True, shuffle=True, num_workers=4)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=hyperparams["batch_size"], drop_last=True, shuffle=False, num_workers=4)
+    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch_size, drop_last=True, shuffle=True, num_workers=4)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size, drop_last=True, shuffle=False, num_workers=4)
 
     return dataloader, val_dataloader
 
 
-def get_supervised_data(hyperparams, pixelwise, device):
+def get_supervised_data(config, pixelwise, device):
 
-    train_path = hyperparams["train_path"]
-    if hyperparams["dataset"] == "worldcover":
+    train_path = config.train_path
+    if config.dataset == "worldcover":
         label_transform = WorldCoverLabelTransform()
         standardizer = StandardizeEnMAP()
-    elif hyperparams["dataset"] == "dfc":
+    elif config.dataset == "dfc":
         label_transform = DFCLabelTransform()
         standardizer = StandardizeEnMAP()
-    elif hyperparams["dataset"] == "houston2018":
-        train_label_path = hyperparams["train_label_path"]
+    elif config.dataset == "houston2018":
+        train_label_path = config.train_label_path
         standardizer = StandardizeHouston2018()
         label_transform = Houston2018LabelTransform()
 
@@ -101,27 +89,28 @@ def get_supervised_data(hyperparams, pixelwise, device):
             ToTensor(),
     ])
 
-    if hyperparams["dataset"] in ["dfc", "enmap"]:
-        dataset = EnMAPWorldCoverDataset(train_path, transforms, label_transform, device, test=False, target_type=hyperparams["dataset"], remove_bands=hyperparams["remove_bands"], rgb_only=hyperparams["rgb_only"])
-    elif hyperparams["dataset"] == "houston2018":
-        dataset = Houston2018Dataset(train_path, train_label_path, transforms, label_transform, patch_size=hyperparams["image_size"]-hyperparams["patch_sub"], test=False, drop_unlabeled=True, fix_train_patches=False, pixelwise=pixelwise, rgb_only=hyperparams["rgb_only"])
+    if config.dataset in ["dfc", "enmap"]:
+        dataset = EnMAPWorldCoverDataset(train_path, transforms, label_transform, device, test=False, target_type=config.dataset, remove_bands=config.remove_bands, rgb_only=config.rgb_only)
+    elif config.dataset == "houston2018":
+        dataset = Houston2018Dataset(train_path, train_label_path, transforms, label_transform, patch_size=config.image_size-config.patch_sub, test=False, drop_unlabeled=True, fix_train_patches=False, pixelwise=pixelwise, rgb_only=config.rgb_only)
 
-    num_train_samples = int(len(dataset) * hyperparams["train_fraction"]) # note: overwritten below
+    num_train_samples = int(len(dataset) * config.train_fraction) # note: overwritten below
     num_val_samples = len(dataset) - num_train_samples
-    num_train_samples = int(num_train_samples * hyperparams["data_fraction"])
+    num_train_samples = int(num_train_samples * config.data_fraction)
 
-    val_dataset, train_dataset, rest = torch.utils.data.random_split(dataset, [num_val_samples, num_train_samples, len(dataset) - num_train_samples - num_val_samples], generator=torch.Generator().manual_seed(hyperparams["seed"]))
-    # patches_per_tile = (64-2*(hyperparams['patch_size']//2))**2# 
+    val_dataset, train_dataset, rest = torch.utils.data.random_split(dataset, [num_val_samples, num_train_samples, len(dataset) - num_train_samples - num_val_samples], generator=torch.Generator().manual_seed(config.seed))
+    # patches_per_tile = (64-2*(config.patch_size//2))**2# 
     print(f"{len(train_dataset)=}")
     print(f"{len(val_dataset)=}")
 
-    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=hyperparams["batch_size"], drop_last=False, shuffle=True, num_workers=4)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=hyperparams["batch_size"], drop_last=False, shuffle=False, num_workers=4)
+    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=config.batch_size, drop_last=False, shuffle=True, num_workers=4)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=config.batch_size, drop_last=False, shuffle=False, num_workers=4)
 
     return dataloader, val_dataloader
 
 def verify_sweep_params(hyperparams):
-        # todo: handle this within wandb sweep init
+    """Ensure that boolean flags are correctly handeled
+    """
     if hyperparams["pretrain_run_id"] in ["none", "None"]:
         pretrain_run_id = None
     else:
@@ -164,9 +153,9 @@ def verify_sweep_params(hyperparams):
 
     return pretrain_run_id, linear_eval, spectral_pos_embed, blockwise_patch_embed, spectral_only, pixelwise, shifting_window, overwrite_li_optim
 
-def load_checkpoint(hyperparams, model, classifier_name, device):
+def load_checkpoint(config, model, classifier_name, device):
     print("Intializing pre-trained weights...")
-    checkpoint = torch.load(hyperparams["checkpoint_path"], map_location=device)
+    checkpoint = torch.load(config.checkpoint_path, map_location=device)
 
     encoder_weights = checkpoint["model_state_dict"]
     for k in list(encoder_weights.keys()):
@@ -183,11 +172,11 @@ def load_checkpoint(hyperparams, model, classifier_name, device):
         w,b = model.mlp_head[1].weight, model.mlp_head[1].bias
         linear_idx = 1
 
-    if hyperparams["patch_sub"]!= 0 and isinstance(model, ViTSpatialSpectral):
+    if config.patch_sub!= 0 and isinstance(model, ViTSpatialSpectral):
         # pre_trained with different image_size
         if encoder_weights.get("pos_embed") is not None:
             print(f"{encoder_weights['pos_embed'].shape=}")
-            assert model.pos_embed.shape[1] == (hyperparams["image_size"] - hyperparams["patch_sub"])**2
+            assert model.pos_embed.shape[1] == (config.image_size - config.patch_sub)**2
             encoder_weights["pos_embed"] = encoder_weights["pos_embed"][:, :model.pos_embed.shape[1], :]
             print(f"{encoder_weights['pos_embed'].shape=}")
 
@@ -198,3 +187,22 @@ def load_checkpoint(hyperparams, model, classifier_name, device):
     print(model.load_state_dict(encoder_weights))
 
     return model
+
+def get_pretrain_config(pretrain_config_path, general_config_path, seed, device):
+    # consolidate hyperparameters
+    with open(pretrain_config_path) as f:
+        hyperparams = yaml.safe_load(f)
+    with open(general_config_path) as f:
+        config = yaml.safe_load(f)
+
+    hyperparams.update(config["data"][hyperparams["dataset"]])
+    hyperparams.update(config["transformer"])
+    hyperparams.update(config["masked_modeling"])
+    hyperparams["seed"] = seed
+    hyperparams["device"] = device
+
+    return Dotdict(hyperparams)
+
+class Dotdict(object):
+    def __init__(self, data):
+        self.__dict__.update(data)

@@ -10,11 +10,10 @@ Results will be presented at the CVPR EarthVision Workshop 2023 (see below for t
 
 # Masked pre-training
 The masked pre-training can be started with a call to the `pretrain.py` file.
-Before starting the training, please adjust the paths to your local copy of the dataset in `config.yaml`. Hyperparameters can be adjusted at the top of `pretrain.py`.
-
+Before starting the training, make sure to adjust the paths to your local copy of the dataset in `config.yaml`. Hyperparameters can be adjusted at the top of `pretrain.py`.
 
 # Land-cover Classification
-The `finetune.py` script can be used to finetune a pre-trained model or to train a model from scratch for classifcation of EnMAP or Houston2018 data. Prior to training, tge dataset paths must be specified in `config.yaml`. Hyperparameters are defined at the top of the training script.
+The `finetune.py` script can be used to finetune a pre-trained model or to train a model from scratch for classifcation of EnMAP or Houston2018 data. Prior to training, the dataset paths must be specified in `config.yaml`. Hyperparameters are defined at the top of the training script.
 
 # Data
 * The Houston2018 dataset is publicly [available](https://hyperspectral.ee.uh.edu/?page_id=1075) from the Hyperspectral Image Analysis Lab at the University of Houston and IEEE GRSS IADF.

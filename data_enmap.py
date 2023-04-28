@@ -198,7 +198,7 @@ class EnMAPWorldCoverDataset(Dataset):
                 # print(k, len(v), len(set([x[0] for x in v])), sorted(set([x[0] for x in v])))
 
             print(f"{self.pixel_location_file=}")
-            print(f"Number of samples: {len(self.patches)}")
+            print(f"Number of samples: {len(self.patches):,}")
 
         if self.testset:
             assert "test" in path
@@ -217,7 +217,7 @@ class EnMAPWorldCoverDataset(Dataset):
 
         if self.pixel_location_file is None:
             print(f"{self.pixel_location_file=}")
-            print(f"Number of tiles: {len(self.enmap_files)}")
+            print(f"Number of tiles: {len(self.enmap_files):,}")
 
         if self.load_to_memory:
             self.imgs = self.load_imgs()
