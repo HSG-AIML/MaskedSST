@@ -221,10 +221,10 @@ def get_supervised_data(config, device):
 
 def verify_sweep_params(hyperparams):
     """Ensure that boolean flags are correctly handeled"""
-    if hyperparams["pretrain_run_id"] in ["none", "None"]:
-        pretrain_run_id = None
+    if hyperparams["checkpoint_path"] in ["none", "None"]:
+        checkpoint_path = None
     else:
-        pretrain_run_id = hyperparams["pretrain_run_id"]
+        checkpoint_path = hyperparams["checkpoint_path"]
 
     if hyperparams["linear_eval"] in [False, "false", "False"]:
         linear_eval = False
@@ -262,7 +262,7 @@ def verify_sweep_params(hyperparams):
         overwrite_li_optim = True
 
     return (
-        pretrain_run_id,
+        checkpoint_path,
         linear_eval,
         spectral_pos_embed,
         blockwise_patch_embed,
@@ -274,7 +274,7 @@ def verify_sweep_params(hyperparams):
 
 
 def load_checkpoint(config, model, classifier_name, device):
-    print("Intializing pre-trained weights...")
+    print("Initializing pre-trained weights...")
     checkpoint = torch.load(config.checkpoint_path, map_location=device)
 
     encoder_weights = checkpoint["model_state_dict"]
@@ -387,7 +387,7 @@ def get_sweep_finetune_config(finetune_config_path, general_config_path):
         )
 
     (
-        pretrain_run_id,
+        checkpoint_path,
         linear_eval,
         spectral_pos_embed,
         blockwise_patch_embed,
@@ -398,7 +398,7 @@ def get_sweep_finetune_config(finetune_config_path, general_config_path):
     ) = verify_sweep_params(hyperparams)
     hyperparams.update(
         {
-            "pretrain_run_id": pretrain_run_id,
+            "checkpoint_path": checkpoint_path,
             "linear_eval": linear_eval,
             "spectral_pos_embed": spectral_pos_embed,
             "blockwise_patch_embed": blockwise_patch_embed,

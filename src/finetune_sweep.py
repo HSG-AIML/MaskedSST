@@ -30,7 +30,8 @@ from src.utils import validate_downstream as validate
 if __name__ == "__main__":
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     run, config = get_sweep_finetune_config(
-        "configs/finetune_config.yaml", "configs/config.yaml", device
+        "configs/finetune_config.yaml",
+        "configs/config.yaml",
     )
 
     random.seed(config.seed)
@@ -208,6 +209,7 @@ if __name__ == "__main__":
                 step,
                 best_val_acc,
                 optimizer.param_groups[0]["lr"],
+                device,
                 pixelwise=config.pixelwise,
             )
 

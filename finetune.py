@@ -24,7 +24,6 @@ from src.utils import (
     load_checkpoint,
     get_finetune_config,
     get_val_epochs,
-    stack_image_batch,
     train_step,
 )
 from src.utils import validate_downstream as validate
