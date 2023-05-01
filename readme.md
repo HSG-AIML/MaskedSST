@@ -21,8 +21,8 @@ The `finetune.py` script can be used to finetune a pre-trained model or to train
 
 # Pre-trained checkpoints
 We provide the pre-trained model checkpoints for the spatial-spectral transformer on Houston2018 and EnMAP datasets.
-* [Houston2018 checkpoint]()
-* [EnMAP checkpoint]()
+* [Houston2018 checkpoint](checkpoints/pretrained_ViTSpatialSpectral_200ep_houston2018.pth)
+* [EnMAP checkpoint](checkpoints/pretrained_ViTSpatialSpectral_200ep_enmap.pth)
 
 # Code
 This repository was developed using `Python 3.8.13` with `PyTorch 1.12`. Please have a look at the `requirements.txt` file for more details.
