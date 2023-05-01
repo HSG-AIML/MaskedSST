@@ -10,18 +10,26 @@ from rasterio.warp import Resampling
 from shapely.ops import transform
 
 TILE_SIZE = 64
-UPSCALE_FACTOR_ENMAP = 1 # 3 for 10m resolution with bilinear
+UPSCALE_FACTOR_ENMAP = 1  # 3 for 10m resolution with bilinear
 
 ENMAP_PATH = "/ds2/remote_sensing/enmap/"
 OUTPUT_DIR = "/ds2/remote_sensing/enmap_worldcover_dataset_v3/train/"
 TESTFILES = "/ds2/remote_sensing/enmap_worldcover_dataset/testfiles.txt"
 
 if __name__ == "__main__":
-    wgs84 = pyproj.CRS('EPSG:4326')
+    wgs84 = pyproj.CRS("EPSG:4326")
 
-    l2_product_dirs = [x for x in glob.glob(os.path.join(ENMAP_PATH, "*", "*", "*", "*L2A-DT*")) if os.path.isdir(x)]
-    l2_spectral_products = [glob.glob(os.path.join(d, "*SPECTRAL_IMAGE.TIF"))[0] for d in l2_product_dirs]
-    l2_metadata = [glob.glob(os.path.join(d, "*METADATA.XML"))[0] for d in l2_product_dirs]
+    l2_product_dirs = [
+        x
+        for x in glob.glob(os.path.join(ENMAP_PATH, "*", "*", "*", "*L2A-DT*"))
+        if os.path.isdir(x)
+    ]
+    l2_spectral_products = [
+        glob.glob(os.path.join(d, "*SPECTRAL_IMAGE.TIF"))[0] for d in l2_product_dirs
+    ]
+    l2_metadata = [
+        glob.glob(os.path.join(d, "*METADATA.XML"))[0] for d in l2_product_dirs
+    ]
     print(f"Found {len(l2_spectral_products)} EnMAP products.")
 
     # make sure that there are no duplicate enmap files
@@ -54,15 +62,14 @@ if __name__ == "__main__":
                 out_shape=(
                     dataset.count,
                     int(dataset.height * UPSCALE_FACTOR_ENMAP),
-                    int(dataset.width * UPSCALE_FACTOR_ENMAP)
+                    int(dataset.width * UPSCALE_FACTOR_ENMAP),
                 ),
-                resampling=Resampling.bilinear
+                resampling=Resampling.bilinear,
             )
 
             # scale image transform
             transform = dataset.transform * dataset.transform.scale(
-                (dataset.width / enmap.shape[-1]),
-                (dataset.height / enmap.shape[-2])
+                (dataset.width / enmap.shape[-1]), (dataset.height / enmap.shape[-2])
             )
             enmap_meta["transform"] = transform
             enmap_meta["width"] = enmap.shape[-1]
@@ -72,12 +79,12 @@ if __name__ == "__main__":
         tiles = []
         for i in range(0, enmap.shape[1], TILE_SIZE):
             for j in range(0, enmap.shape[2], TILE_SIZE):
-                if i+TILE_SIZE > enmap.shape[1] or j+TILE_SIZE > enmap.shape[2]:
+                if i + TILE_SIZE > enmap.shape[1] or j + TILE_SIZE > enmap.shape[2]:
                     continue
-                    
-                enmap_tile = enmap[:, i:i+TILE_SIZE, j:j+TILE_SIZE]
-                
-                if (enmap_tile == enmap_meta["nodata"]).mean(axis=(1,2)).all():
+
+                enmap_tile = enmap[:, i : i + TILE_SIZE, j : j + TILE_SIZE]
+
+                if (enmap_tile == enmap_meta["nodata"]).mean(axis=(1, 2)).all():
                     # all bands are nodata for every pixel
                     continue
 
@@ -87,7 +94,16 @@ if __name__ == "__main__":
 
         if save:
             for idx, tile in tqdm(enumerate(tiles), total=len(tiles)):
-                with rasterio.open(os.path.join(outdir, f"tile{idx}_enmap.tif"), "w", driver="GTiff", nodata=-32768.0, dtype=tile.dtype, count=tile.shape[0], width=tile.shape[2], height=tile.shape[1]) as f:
+                with rasterio.open(
+                    os.path.join(outdir, f"tile{idx}_enmap.tif"),
+                    "w",
+                    driver="GTiff",
+                    nodata=-32768.0,
+                    dtype=tile.dtype,
+                    count=tile.shape[0],
+                    width=tile.shape[2],
+                    height=tile.shape[1],
+                ) as f:
                     f.write(tile)
         else:
             print("Not saved, see above")

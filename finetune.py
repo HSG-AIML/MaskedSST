@@ -1,5 +1,6 @@
 import os
 
+# limit resource usage
 os.environ["OMP_NUM_THREADS"] = "4"  # export OMP_NUM_THREADS=4
 os.environ["OPENBLAS_NUM_THREADS"] = "4"  # export OPENBLAS_NUM_THREADS=4
 os.environ["MKL_NUM_THREADS"] = "4"  # export MKL_NUM_THREADS=6
@@ -8,24 +9,25 @@ os.environ["NUMEXPR_NUM_THREADS"] = "4"  # export NUMEXPR_NUM_THREADS=6
 os.environ["GDAL_NUM_THREADS"] = "4"
 
 import random
-import yaml
 
 import wandb
 import torch
 import numpy as np
 from tqdm import tqdm
-from einops import rearrange
 from torchmetrics import Accuracy
 
-from vit_original import ViTRGB
-from vit_spatial_spectral import ViTSpatialSpectral, get_pos_for_spectral_embedding
 from DeepHyperX.models import get_model
-
-from src.data_enmap import wavelengths as enmaps_waves
-from src.data_enmap import invalid_l2_bands
-from src.data_houston2018 import wavelengths as houston_waves
-from src.utils import get_supervised_data, load_checkpoint
-from src.finetune_sweep import validate
+from src.vit_original import ViTRGB
+from src.vit_spatial_spectral import ViTSpatialSpectral
+from src.utils import (
+    get_supervised_data,
+    load_checkpoint,
+    get_finetune_config,
+    get_val_epochs,
+    stack_image_batch,
+    train_step,
+)
+from src.utils import validate_downstream as validate
 
 SEED = 5
 
@@ -36,188 +38,112 @@ torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
 if __name__ == "__main__":
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-
-    name = "ViTSpatialSpectral"
-    spectral_band_patch_size = 10
-
-    hyperparams = {
-        "dataset": "dfc", # dfc or enmap
-        "ignored_label": -1,
-        "device": device,
-        "logging_freq": 10, # steps
-        "val_freq": 1, # epochs
-        "method_name": name,
-
-        "train_fraction": 0.8,
-        "data_fraction": 1., # does not affect val set size
-        "pixelwise": False,
-        "image_size": 8,
-        "patch_size": 1,
-        "band_patch_size": spectral_band_patch_size,
-        "train_fraction": 0.8,
-        "spectral_only": False,
-        "rgb_only": False,
-        "shifting_window": False, # on DFC dataset, if image_size < 64 don't take one random crop but move window image_sizeXimage_size window over 64x64 image
-        "spectral_pos_embed": True, # SPE
-        "blockwise_patch_embed": True, # BPE
-
-        "batch_size": 2,
-        "val_batch_size": 2,
-        "epoch": 100,
-        "checkpoint_save_epochs": [20,30,40,50,60,70,80,90,100,200,300,400,500,600,700,800,900,1000],
-        "max_steps": 1000,
-        "lr": 5e-4, 
-        "mlp_head_lr": 5e-3,
-        "weight_decay": 5e-3,
-        "pos_embed_len": None,
-
-        "checkpoint_path": None, 
-        "linear_eval": False,
-        "overwrite_li_optim": False,
-    }
-
-    with open("config.yaml") as f:
-        config = yaml.safe_load(f)
-
-    hyperparams.update(config["data"][hyperparams["dataset"]])
-    hyperparams.update(config["transformer"])
-    hyperparams["seed"] = SEED
-
-    run = wandb.init(config=hyperparams, project="downstream")
-
-    print(f"{hyperparams['dataset']=}")
-    print(f"{hyperparams['data_fraction']=}")
-    print(f"{SEED=}")
-    print(f"{name=}")
-    print(f"{hyperparams['method_name']=}")
-
-    name = hyperparams['method_name']
-
-    if name == "li":
-        assert hyperparams["pixelwise"]
-
-    if hyperparams["pixelwise"] and hyperparams["image_size"] % 2 == 0:
-        # make sure there is a "center pixel"
-        hyperparams["patch_sub"] = 1
-    else:
-        hyperparams["patch_sub"] = 0
-    
-    print(f"{hyperparams['patch_sub']=}")
-
-    if name == "li":
-
-        model, optimizer, criterion, model_params = get_model(
-            name=name,
-            n_classes=hyperparams["n_classes"],
-            n_bands=hyperparams["n_bands"],
-            ignored_labels=[hyperparams["ignored_label"]],
-            patch_size=hyperparams["image_size"] - hyperparams["patch_sub"], # one prediction per patch
-        )
-        print(f"{model.patch_size=}")
-
-    elif name == "ViTSpatialSpectral":
-        if hyperparams["dataset"] in ["worldcover", "dfc"]:
-            # default
-            spectral_pos = torch.arange(hyperparams["n_bands"] // hyperparams["band_patch_size"])
-        elif hyperparams["dataset"] == "houston2018":
-            # map spectral tokens to their positions in enmap spectral sequence
-            spectral_pos = get_pos_for_spectral_embedding(
-                hyperparams["band_patch_size"],
-                houston_waves,
-                np.array(enmaps_waves)[~np.array(invalid_l2_bands)],
-            )
-        else:
-            raise NotImplementedError(f"Unknown dataset {hyperparams['dataset']=}")
-        hyperparams["spectral_pos"] = spectral_pos
-        model = ViTSpatialSpectral(
-            image_size=hyperparams["image_size"]-hyperparams["patch_sub"],
-            spatial_patch_size=hyperparams["patch_size"],
-            spectral_patch_size=hyperparams["band_patch_size"],
-            num_classes=hyperparams["n_classes"],
-            dim=hyperparams["transformer_dim"],
-            depth=hyperparams["transformer_depth"],
-            heads=hyperparams["transformer_n_heads"],
-            mlp_dim=hyperparams["transformer_mlp_dim"],
-            dropout = hyperparams["transformer_dropout"],
-            emb_dropout = hyperparams["transformer_emb_dropout"],
-            channels=hyperparams["n_bands"],
-            spectral_pos=spectral_pos,
-            spectral_pos_embed=hyperparams["spectral_pos_embed"],
-            blockwise_patch_embed=hyperparams["blockwise_patch_embed"],
-            spectral_only=hyperparams["spectral_only"],
-            pixelwise=hyperparams["pixelwise"],
-            pos_embed_len=hyperparams["pos_embed_len"],
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    config = get_finetune_config(
+        "configs/finetune_config.yaml", "configs/config.yaml", SEED, device
     )
-    elif name == "ViTRGB":
+
+    run = wandb.init(config=config, project="downstream")
+    config.run_id = run.id
+
+    if config.method_name == "li":
+        model, optimizer, criterion, model_params = get_model(
+            name=config.method_name,
+            n_classes=config.n_classes,
+            n_bands=config.n_bands,
+            ignored_labels=[config.ignored_label],
+            patch_size=config.image_size - config.patch_sub,  # one prediction per patch
+        )
+    elif config.method_name == "ViTSpatialSpectral":
+        model = ViTSpatialSpectral(
+            image_size=config.image_size - config.patch_sub,
+            spatial_patch_size=config.patch_size,
+            spectral_patch_size=config.band_patch_size,
+            num_classes=config.n_classes,
+            dim=config.transformer_dim,
+            depth=config.transformer_depth,
+            heads=config.transformer_n_heads,
+            mlp_dim=config.transformer_mlp_dim,
+            dropout=config.transformer_dropout,
+            emb_dropout=config.transformer_emb_dropout,
+            channels=config.n_bands,
+            spectral_pos=config.spectral_pos,
+            spectral_pos_embed=config.spectral_pos_embed,
+            blockwise_patch_embed=config.blockwise_patch_embed,
+            spectral_only=config.spectral_only,
+            pixelwise=config.pixelwise,
+            pos_embed_len=config.pos_embed_len,
+        )
+    elif config.method_name == "ViTRGB":
         model = ViTRGB(
-            image_size=hyperparams["image_size"],
-            patch_size=hyperparams["patch_size"],
-            num_classes=hyperparams["n_classes"],
-            dim=hyperparams["transformer_dim"],
-            depth=hyperparams["transformer_depth"],
-            heads=hyperparams["transformer_n_heads"],
-            mlp_dim=hyperparams["transformer_mlp_dim"],
-            dropout = hyperparams["transformer_dropout"],
-            emb_dropout = hyperparams["transformer_emb_dropout"],
-            channels=hyperparams["n_bands"],
-            pixelwise=True, # one prediction per pixel, not per patch
+            image_size=config.image_size,
+            patch_size=config.patch_size,
+            num_classes=config.n_classes,
+            dim=config.transformer_dim,
+            depth=config.transformer_depth,
+            heads=config.transformer_n_heads,
+            mlp_dim=config.transformer_mlp_dim,
+            dropout=config.transformer_dropout,
+            emb_dropout=config.transformer_emb_dropout,
+            channels=config.n_bands,
+            pixelwise=True,  # one prediction per pixel, not per patch
         )
     else:
-        raise NotImplementedError(f"method {name} not available")
+        raise NotImplementedError(f"method {config.method_name} not available")
 
-    classifier_name = "fc" if name == "li" else "mlp_head"
+    classifier_name = "fc" if config.method_name == "li" else "mlp_head"
 
-    if hyperparams["checkpoint_path"] is not None:
-        model = load_checkpoint(hyperparams, model, classifier_name, device)
+    if config.checkpoint_path is not None:
+        model = load_checkpoint(config, model, classifier_name, device)
 
     model.to(device)
 
-    if hyperparams["linear_eval"]:
+    if config.linear_eval:
         print("Linear evaluation... only training mlp_head")
-        for n,p in model.named_parameters():
+        for n, p in model.named_parameters():
             if not classifier_name in n:
                 p.requires_grad = False
         params = list(getattr(model, classifier_name).parameters())
-        print(f"Trainable params: {sum([p.numel() for p in params]):,}")
     else:
+        # fine-tuning
         params = list(model.parameters())
-        print(f"Trainable params: {sum([p.numel() for p in params]):,}")
-        
         # set different LR for transformer and MLP head
-        if hyperparams["lr"] != hyperparams["mlp_head_lr"]:
-            mlp_param_list = [p for n,p in model.named_parameters() if classifier_name in n]
-            rest_param_list = [p for n,p in model.named_parameters() if classifier_name not in n]
+        if config.lr != config.mlp_head_lr:
+            mlp_param_list = [
+                p for n, p in model.named_parameters() if classifier_name in n
+            ]
+            rest_param_list = [
+                p for n, p in model.named_parameters() if classifier_name not in n
+            ]
             params = [
-                {"params": mlp_param_list, "lr": hyperparams["mlp_head_lr"]},
+                {"params": mlp_param_list, "lr": config.mlp_head_lr},
                 {"params": rest_param_list},
             ]
 
-    if name != "li" or hyperparams["overwrite_li_optim"]:
-        optimizer = torch.optim.Adam(params, lr=hyperparams["lr"], weight_decay=hyperparams["weight_decay"])
-        criterion = torch.nn.CrossEntropyLoss(ignore_index=hyperparams["ignored_label"])
+    if config.method_name != "li" or config.overwrite_li_optim:
+        optimizer = torch.optim.Adam(
+            params, lr=config.lr, weight_decay=config.weight_decay
+        )
+        criterion = torch.nn.CrossEntropyLoss(ignore_index=config.ignored_label)
     else:
         criterion = criterion.to(device)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, factor=0.9, patience=5, verbose=True
-        )
-    
-    acc_criterion = Accuracy("multiclass", num_classes=hyperparams["n_classes"], average="macro").to(device)
+        optimizer, factor=0.9, patience=5, verbose=True
+    )
 
-    print(f"Model name: {name}")
+    acc_criterion = Accuracy(
+        "multiclass", num_classes=config.n_classes, average="macro"
+    ).to(device)
     model_params = sum([p.numel() for p in model.parameters()])
+    config.num_params = model_params
+
+    print(f"Model name: {config.method_name}")
     print(f"Model parameters: {model_params:,}")
-    hyperparams["num_params"] = model_params
 
-    dataloader, val_dataloader = get_supervised_data(hyperparams, hyperparams["pixelwise"], device)
+    dataloader, val_dataloader = get_supervised_data(config, device)
 
-    run_id = run.id
-    hyperparams["run_id"] = run_id
-    os.mkdir(f"models/{run_id}/")
+    os.mkdir(f"models/{config.run_id}/")
 
     losses = []
     accs = []
@@ -225,128 +151,63 @@ if __name__ == "__main__":
     acc_per_epoch = []
     current_val_acc = 0
     best_val_acc = 0
-
     step = 0
-
-    # fix the number of validation runs
-    # training will last for `epochs` or `max_steps`, whatever takes longer
-    # for small data_fraction and fixed batch_size, epochs will be very short
-    # and it will take ages to run a validation loop after every single one
-    steps_per_epoch = len(dataloader)
-    total_steps = steps_per_epoch * hyperparams["epoch"]
-    if total_steps > hyperparams["max_steps"]:
-        # max epochs is reached first, eval after each epoch
-        validation_epochs = torch.arange(hyperparams["epoch"])
-    else:
-        # run will stop when max_steps is reached, still only eval `epoch` many times
-        total_epochs = hyperparams["max_steps"] // steps_per_epoch
-        validation_epochs = list(map(int, np.linspace(0, total_epochs, hyperparams["epoch"])))
-
-    wandb.config.update(hyperparams)
-    print("Epochs:", hyperparams["epoch"], "Batch size:", hyperparams["batch_size"])
-    print(f"Seed: {hyperparams['seed']}")
-    print(f"Linear eval: {hyperparams['linear_eval']}", type(hyperparams['linear_eval']))
-    print(f"checkpoint: {hyperparams['checkpoint_path']}")
-    print(f"{hyperparams['pixelwise']=}")
-    print(f"{hyperparams['linear_eval']=}")
-
-    epochs_pbar = tqdm(range(hyperparams["epoch"] + 1))
-    # for epoch in epochs_pbar:
     epoch = 0
-    while epoch < hyperparams["epoch"] + 1 or step < hyperparams["max_steps"] + 1:
+    validation_epochs = get_val_epochs(config, dataloader)
+
+    wandb.config.update(config)
+
+    epochs_pbar = tqdm(range(config.epoch + 1))
+    while epoch < config.epoch + 1 or step < config.max_steps + 1:
         epochs_pbar.set_description(f"Epoch {epoch}")
         model.train()
 
         train_pbar = tqdm(enumerate(dataloader), total=len(dataloader), leave=False)
         for idx, batch in train_pbar:
             train_pbar.set_description(f"Training {step:,}")
-           
+
             img = batch["img"]
             label = batch["label"]
 
-            if hyperparams["image_size"] != 64 and hyperparams["dataset"] in ["dfc", "worldcover"]:
-                if hyperparams["shifting_window"]:
-                    # tile image into multiple image_sizeXimage_size patches and stack along batch dimension
-                    cutoff_h = img.shape[2] % (hyperparams["image_size"] - hyperparams["patch_sub"])
-                    cutoff_w = img.shape[3] % (hyperparams["image_size"] - hyperparams["patch_sub"])
-                    assert cutoff_h == cutoff_w
-                    if cutoff_h != 0:
-                        # remove border pixels s.t. image is divisible by patch size
-                        img = img[:, :, :-cutoff_h, :-cutoff_w]
-                        label = label[:, :-cutoff_h, :-cutoff_w]
-                    img = rearrange(img, 'b c (h p1) (w p2) -> (b h w) c p1 p2', p1=hyperparams["image_size"] - hyperparams["patch_sub"], p2=hyperparams["image_size"] - hyperparams["patch_sub"])
-                    label = rearrange(label, 'b (h p1) (w p2) -> (b h w) p1 p2', p1=hyperparams["image_size"] - hyperparams["patch_sub"], p2=hyperparams["image_size"] - hyperparams["patch_sub"])
-                else:
-                    # train with one smaller random crop
-                    x,y = torch.randint(0, 64 - hyperparams["image_size"] - hyperparams["patch_sub"], size=(2,))
-                    img = img[:, :, x:x+hyperparams["image_size"]-hyperparams["patch_sub"], y:y+hyperparams["image_size"]-hyperparams["patch_sub"]] 
-                    label = label[:, x:x+hyperparams["image_size"]-hyperparams["patch_sub"], y:y+hyperparams["image_size"]-hyperparams["patch_sub"]]
-
-
-            if name == "li" or hyperparams["pixelwise"]:
-                # baseline model only predicts class for the center pixel of the patch
-                center_idx = (hyperparams["image_size"] - hyperparams["patch_sub"]) // 2
-                if hyperparams["dataset"] in ["dfc","worldcover"]:
-                    label = label[:, center_idx, center_idx]#.unsqueeze(1).unsqueeze(1)
-
-                # extra dim for 3D conv model
-                if name == "li": img = img.unsqueeze(1)
-
-            img = img.to(device)
-            label = label.to(device)
-
-            optimizer.zero_grad()
-
-            output = model(img)
-            loss = criterion(output, label) 
-
-            if torch.isnan(loss):
-                 ValueError("Loss is NaN")
-                    
-            pred = output.argmax(dim=1)
-            valid_idx = label != hyperparams["ignored_label"]
-            acc = (pred[valid_idx] == label[valid_idx]).sum() / pred[valid_idx].numel()
-            if valid_idx.sum() != 0:
-                macro_acc = acc_criterion(pred[valid_idx].to(int), label[valid_idx])
-            else:
-                macro_acc = acc
-
-            loss.backward()
-            optimizer.step()
+            loss, acc, macro_acc = train_step(
+                img, label, model, config, device, criterion, optimizer, acc_criterion
+            )
             step += 1
 
             losses.append(loss.detach().item())
             accs.append(acc.detach().item())
             macro_accs.append(macro_acc.detach().item())
 
-            if step % hyperparams["logging_freq"] == 0:
-                wandb.log({
+            if step % config.logging_freq == 0:
+                wandb.log(
+                    {
                         "epoch": epoch,
-                        "acc": np.array(accs[-1*hyperparams["logging_freq"]:]).mean(),
-                        "macro_acc": np.array(macro_accs[-1*hyperparams["logging_freq"]:]).mean(),
-                        "loss": np.array(losses[-1*hyperparams["logging_freq"]:]).mean(),
-                        "lr": optimizer.param_groups[0]['lr'],
-                },
-                step=step,
-            )
+                        "acc": np.array(accs[-1 * config.logging_freq :]).mean(),
+                        "macro_acc": np.array(
+                            macro_accs[-1 * config.logging_freq :]
+                        ).mean(),
+                        "loss": np.array(losses[-1 * config.logging_freq :]).mean(),
+                        "lr": optimizer.param_groups[0]["lr"],
+                    },
+                    step=step,
+                )
 
         # log at end of training epoch (to same step as validation stats below)
         wandb.log({"epoch": epoch, "acc": acc.item(), "loss": loss.item()}, step=step)
-
         if epoch in validation_epochs:
             val_losses, best_val_acc = validate(
-                hyperparams, 
-                epoch, run_id, 
-                name, model, 
-                val_dataloader, 
-                criterion, 
-                acc_criterion, 
-                step, 
-                best_val_acc, 
-                optimizer.param_groups[0]['lr'],
+                config,
+                epoch,
+                model,
+                val_dataloader,
+                criterion,
+                acc_criterion,
+                step,
+                best_val_acc,
+                optimizer.param_groups[0]["lr"],
                 device,
-                pixelwise=hyperparams["pixelwise"],
-                )
+                pixelwise=config.pixelwise,
+            )
 
         scheduler.step(torch.tensor(val_losses).mean().item())
         epoch += 1

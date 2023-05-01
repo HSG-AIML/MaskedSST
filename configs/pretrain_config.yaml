@@ -1,8 +1,8 @@
 dataset: enmap
 image_size: 8
-batch_size: 64
 patch_size: 1
 band_patch_size: 10
+batch_size: 64
 train_fraction: 0.9
 data_fraction: 1
 
