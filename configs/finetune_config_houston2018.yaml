@@ -1,0 +1,33 @@
+dataset: houston2018
+image_size: 8
+patch_size: 1
+band_patch_size: 10
+batch_size: 32
+val_batch_size: 2
+data_fraction: 1.
+train_fraction: 0.8
+
+ignored_label: -1
+logging_freq: 10
+val_freq: 1
+checkpoint_save_epochs: [10,100,1000]
+checkpoint_path: checkpoints/pretrained_ViTSpatialSpectral_200ep_houston2018.pth
+
+method_name: ViTSpatialSpectral
+spectral_pos_embed: False
+blockwise_patch_embed: True
+pixelwise: False
+spectral_only: False
+rgb_only: False
+shifting_window: False
+
+epoch: 100
+max_steps: 2000
+
+linear_eval: False
+lr: 0.0005
+mlp_head_lr: 0.005
+weight_decay: 0.005
+pos_embed_len: null
+
+overwrite_li_optim: False

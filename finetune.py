@@ -8,6 +8,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "4"  # export VECLIB_MAXIMUM_THREADS=4
 os.environ["NUMEXPR_NUM_THREADS"] = "4"  # export NUMEXPR_NUM_THREADS=6
 os.environ["GDAL_NUM_THREADS"] = "4"
 
+import sys
 import random
 
 import wandb
@@ -38,8 +39,17 @@ torch.backends.cudnn.deterministic = True
 
 if __name__ == "__main__":
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    dataset_name = sys.argv[1]
+    valid_datasets = ["enmap", "houston2018"]
+    assert (
+        dataset_name in valid_datasets
+    ), f"Please provide a valid dataset name from {valid_datasets}, provided: {dataset_name=}"
+
     config = get_finetune_config(
-        "configs/finetune_config.yaml", "configs/config.yaml", SEED, device
+        f"configs/finetune_config_{dataset_name}.yaml",
+        "configs/config.yaml",
+        SEED,
+        device,
     )
 
     run = wandb.init(config=config, project="downstream")

@@ -11,10 +11,10 @@ ignored_label: -1
 logging_freq: 10
 val_freq: 1
 checkpoint_save_epochs: [10,100,1000]
-checkpoint_path: null
+checkpoint_path: checkpoints/pretrained_ViTSpatialSpectral_200ep_enmap.pth
 
 method_name: ViTSpatialSpectral
-spectral_pos_embed: False
+spectral_pos_embed: True
 blockwise_patch_embed: True
 pixelwise: False
 spectral_only: False

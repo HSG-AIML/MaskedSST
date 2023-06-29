@@ -12,7 +12,7 @@ data:
   houston2018:
     train_path: /netscratch/lscheibenreif/code/hyper/2018IEEEGRSS_DataFusionChallenge/ImageryAndTrainingGT/2018IEEE_Contest/Phase2/FullHSIDataset
     train_label_path: /netscratch/lscheibenreif/code/hyper/2018IEEEGRSS_DataFusionChallenge/ImageryAndTrainingGT/2018IEEE_Contest/Phase2/TrainingGT/2018_IEEE_GRSS_DFC_GT_TR.tif
-    n_bands: 48
+    n_bands: 50 # the 48 bands are zero padded to 50 for division into spectral tokens of size 10
     remove_bands: []
     n_classes: 20
 transformer:
