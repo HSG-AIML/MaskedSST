@@ -13,7 +13,7 @@ The masked pre-training can be started with a call to the `pretrain.py` file.
 Before starting the training, make sure to adjust the paths to your local copy of the dataset in `configs/config.yaml`. Hyperparameters can be adjusted in `configs/pretrain_config.yaml`.
 
 # Land-cover Classification
-The `finetune.py` script can be used to finetune a pre-trained model or to train a model from scratch for classifcation of EnMAP or Houston2018 data. Prior to training, the dataset paths must be specified in `configs/config.yaml`. Hyperparameters can be adjusted in `configs/finetune_config.yaml`. There is also an alternative fine-tuning script for the use with  `wandb sweep` functionality at `src/finetune_sweep.py`.
+The `finetune.py` script can be used to finetune a pre-trained model or to train a model from scratch for classifcation of EnMAP or Houston2018 data. The desired dataset must be provided as argument, e.g., `finetune.py enmap`. Prior to training, the dataset paths must be specified in `configs/config.yaml`. Hyperparameters can be adjusted in `configs/finetune_config_{dataset}.yaml`. There is also an alternative fine-tuning script for the use with  `wandb sweep` functionality at `src/finetune_sweep.py`.
 
 # Data
 * The Houston2018 dataset is publicly [available](https://hyperspectral.ee.uh.edu/?page_id=1075) from the Hyperspectral Image Analysis Lab at the University of Houston and IEEE GRSS IADF.
