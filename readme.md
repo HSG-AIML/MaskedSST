@@ -2,7 +2,7 @@
 
 This projects tailors vision transformers to the characteristics of hyperspectral aerial and satellite imagery using: (i) blockwise patch embeddings (ii) spatial-spectral self-attention, (iii) spectral positional embeddings and (iv) masked self-supervised pre-training.
 
-Results will be presented at the CVPR EarthVision Workshop 2023 (see below for the reference).
+[Results](https://openaccess.thecvf.com/content/CVPR2023W/EarthVision/html/Scheibenreif_Masked_Vision_Transformers_for_Hyperspectral_Image_Classification_CVPRW_2023_paper.html) were  presented at the CVPR EarthVision Workshop 2023 (see below for the reference).
 
 <p align="center">
   <img width="536" height="295" src="./figure1.jpg">
