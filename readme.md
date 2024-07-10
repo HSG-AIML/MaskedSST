@@ -2,7 +2,7 @@
 
 This projects tailors vision transformers to the characteristics of hyperspectral aerial and satellite imagery using: (i) blockwise patch embeddings (ii) spatial-spectral self-attention, (iii) spectral positional embeddings and (iv) masked self-supervised pre-training.
 
-[Results](https://openaccess.thecvf.com/content/CVPR2023W/EarthVision/html/Scheibenreif_Masked_Vision_Transformers_for_Hyperspectral_Image_Classification_CVPRW_2023_paper.html) were  presented at the CVPR EarthVision Workshop 2023 (see below for the reference).
+Results were  presented at the **CVPR EarthVision Workshop 2023**, [Paper Link](https://openaccess.thecvf.com/content/CVPR2023W/EarthVision/html/Scheibenreif_Masked_Vision_Transformers_for_Hyperspectral_Image_Classification_CVPRW_2023_paper.html).
 
 <p align="center">
   <img width="536" height="295" src="./figure1.jpg">
@@ -36,5 +36,14 @@ The vision transformer and SimMIM implementations are adapted from:
 # Reference
 If you would like to cite our work, please use the following reference:
 
-* Scheibenreif, L., Mommert, M., & Borth, D. (2023). *Masked Vision Transformers for Hyperspectral Image Classification*, In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW) 2023 
-* [Paper](https://openaccess.thecvf.com/content/CVPR2023W/EarthVision/html/Scheibenreif_Masked_Vision_Transformers_for_Hyperspectral_Image_Classification_CVPRW_2023_paper.html)
+* Scheibenreif, L., Mommert, M., & Borth, D. (2023). *Masked Vision Transformers for Hyperspectral Image Classification*, In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW) 2023
+
+```
+@inproceedings{scheibenreif2023masked,
+  title={Masked vision transformers for hyperspectral image classification},
+  author={Scheibenreif, Linus and Mommert, Michael and Borth, Damian},
+  booktitle={Proceedings of the IEEE/CVF conference on computer vision and pattern recognition},
+  pages={2166--2176},
+  year={2023}
+}
+```
